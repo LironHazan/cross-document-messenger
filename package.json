@@ -1,0 +1,37 @@
+{
+  "name": "cross-document-messenger",
+  "version": "1.0.0",
+  "description": "post and subscribe messages between documents ",
+  "main": "index.js",
+  "scripts": {
+    "lint": "eslint lib/ --ext .ts",
+    "test": "jest",
+    "test-coverage": "jest --collect-coverage",
+    "clean": "rm -rf dist build package",
+    "cp:readme": "cp -rf README.md dist/cross-document-messenger",
+    "cp:license": "cp -rf LICENSE dist/cross-document-messenger",
+    "cp:pkjson": "cp -rf package.json dist/cross-document-messenger",
+    "cp:all": "npm run cp:readme && npm run cp:license && npm run && npm run cp:pkjson",
+    "gen-types": "tsc lib/main.ts --declaration --emitDeclarationOnly --outDir dist/cross-document-messenger",
+    "esbuild-browser": "esbuild lib/main.ts --bundle --outfile=dist/cross-document-messenger/main.js",
+    "esbuild-browser:prod": "esbuild lib/main.ts --bundle --minify --sourcemap=external --outfile=dist/cross-document-messenger/main.js && npm run gen-types",
+    "build": "npm run esbuild-browser:prod && npm run cp:all"
+  },
+  "keywords": [
+    "web-messaging"
+  ],
+  "author": "lironh",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/jest": "^27.4.1",
+    "@typescript-eslint/eslint-plugin": "^5.12.1",
+    "@typescript-eslint/parser": "^5.12.1",
+    "esbuild": "^0.14.23",
+    "eslint": "^8.9.0",
+    "eslint-config-prettier": "^8.4.0",
+    "jest": "^27.5.1",
+    "prettier": "^2.5.1",
+    "ts-jest": "^27.1.3",
+    "typescript": "^4.5.5"
+  }
+}
