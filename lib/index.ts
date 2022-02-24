@@ -103,7 +103,7 @@ export class CrossDocsMessenger {
 
     const listenerFn: (event: MessageEvent) => void = (event: MessageEvent) => {
       port2 = event.ports[0];
-      port2.onmessage = (event: MessageEvent) => handlerFn(event);
+      port2.onmessage = (event: MessageEvent) => handlerFn(event.data);
     };
 
     window.addEventListener('message', listenerFn);
