@@ -30,17 +30,15 @@ class TargetFrameConnector {
    * unsubscribe: (): Should be used by the consumer component unmounting / destruction hook (depends on the framework)
    *
    * Example:
-   *
-   *     // Wire connection and get access to functionalities
-   *     const messenger = CrossDocsMessenger.connectToHost()();
-   *
+   *      import {TargetFrameMessenger as messenger} from "cross-document-messenger";
+   **
    *     // Listen to messages from the host
    *     messenger.subscribe((message: Message<any>) => {
    *          console.log(message);
    *       })
    *
    *     // Emit messages:
-   *     CrossDocsMessenger.emit(messenger.getPort(), { type: 'foo', data: "clicked inside iframe!"});
+   *     messenger.emit(messenger.getPort(), { type: 'foo', data: "clicked inside iframe!"});
    *
    *    // Unsubscribe:
    *    messenger.unsubscribe();
