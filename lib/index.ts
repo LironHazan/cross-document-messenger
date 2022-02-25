@@ -10,9 +10,81 @@ export interface MessagePorts {
 
 export interface TargetConnectorRetValue<T> {
   getPort: () => MessagePort | undefined;
+  emit: (senderPort: MessagePort | undefined, message: Message<T>) => void;
   subscribe: (_handlerFn: (event: Message<T>) => void) => void;
   unsubscribe: () => void;
 }
+
+function emit<T>(senderPort: MessagePort | undefined, message: Message<T>) {
+  senderPort?.postMessage(message);
+}
+
+class TargetFrameConnector {
+  private channelRetValue: TargetConnectorRetValue<any> | undefined;
+
+  /**
+   * Responsible for establishing the connection with the host.
+   * Returns the following functions:
+   * getPort: (): Returns the initialized port used for listening to messages from the host and post messages
+   * subscribe: (_handlerFn: (event: Message<T>) => void): Used for subscribing to host messages
+   * unsubscribe: (): Should be used by the consumer component unmounting / destruction hook (depends on the framework)
+   *
+   * Example:
+   *
+   *     // Wire connection and get access to functionalities
+   *     const messenger = CrossDocsMessenger.connectToHost()();
+   *
+   *     // Listen to messages from the host
+   *     messenger.subscribe((message: Message<any>) => {
+   *          console.log(message);
+   *       })
+   *
+   *     // Emit messages:
+   *     CrossDocsMessenger.emit(messenger.getPort(), { type: 'foo', data: "clicked inside iframe!"});
+   *
+   *    // Unsubscribe:
+   *    messenger.unsubscribe();
+   *
+   */
+  private static connectToHost<T>(): () => TargetConnectorRetValue<T> {
+    let port2: MessagePort | undefined;
+    let handlerFn: (message: Message<T>) => void | undefined;
+
+    const listenerFn: (event: MessageEvent) => void = (event: MessageEvent) => {
+      port2 = event.ports[0];
+      port2.onmessage = (event: MessageEvent) => handlerFn(event.data);
+    };
+
+    window.addEventListener('message', listenerFn);
+
+    return () => {
+      return {
+        getPort: () => port2,
+        emit: (senderPort: MessagePort | undefined, message: Message<T>) =>
+          emit(senderPort, message),
+        subscribe: (_handlerFn: (event: Message<T>) => void) =>
+          (handlerFn = _handlerFn),
+        unsubscribe: () => window.removeEventListener('message', listenerFn),
+      };
+    };
+  }
+
+  static getInstance(): TargetFrameConnector {
+    return new TargetFrameConnector();
+  }
+
+  static messenger<T>(
+    connector: TargetFrameConnector
+  ): TargetConnectorRetValue<T> {
+    if (!connector.channelRetValue) {
+      connector.channelRetValue = TargetFrameConnector.connectToHost()();
+    }
+    return connector.channelRetValue;
+  }
+}
+
+const connector = TargetFrameConnector.getInstance();
+export const TargetFrameMessenger = TargetFrameConnector.messenger(connector);
 
 export class CrossDocsMessenger {
   /**
@@ -69,52 +141,6 @@ export class CrossDocsMessenger {
    * @param message
    */
   static emit<T>(senderPort: MessagePort | undefined, message: Message<T>) {
-    senderPort?.postMessage(message);
-  }
-
-  /**
-   * Should be consumed by the targeted iframe/child document.
-   * Responsible for establishing the connection with the host.
-   * Returns the following functions:
-   * getPort: (): Returns the initialized port used for listening to messages from the host and post messages
-   * subscribe: (_handlerFn: (event: Message<T>) => void): Used for subscribing to host messages
-   * unsubscribe: (): Should be used by the consumer component unmounting / destruction hook (depends on the framework)
-   *
-   * Example:
-   *
-   *     // Wire connection and get access to functionalities
-   *     const messenger = CrossDocsMessenger.connectToHost()();
-   *
-   *     // Listen to messages from the host
-   *     messenger.subscribe((message: Message<any>) => {
-   *          console.log(message);
-   *       })
-   *
-   *     // Emit messages:
-   *     CrossDocsMessenger.emit(messenger.getPort(), { type: 'foo', data: "clicked inside iframe!"});
-   *
-   *    // Unsubscribe:
-   *    messenger.unsubscribe();
-   *
-   */
-  static connectToHost<T>(): () => TargetConnectorRetValue<T> {
-    let port2: MessagePort | undefined;
-    let handlerFn: (message: Message<T>) => void | undefined;
-
-    const listenerFn: (event: MessageEvent) => void = (event: MessageEvent) => {
-      port2 = event.ports[0];
-      port2.onmessage = (event: MessageEvent) => handlerFn(event.data);
-    };
-
-    window.addEventListener('message', listenerFn);
-
-    return () => {
-      return {
-        getPort: () => port2,
-        subscribe: (_handlerFn: (event: Message<T>) => void) =>
-          (handlerFn = _handlerFn),
-        unsubscribe: () => window.removeEventListener('message', listenerFn),
-      };
-    };
+    emit(senderPort, message);
   }
 }
