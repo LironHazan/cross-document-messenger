@@ -9,8 +9,7 @@ export interface MessagePorts {
 }
 
 export interface TargetConnectorRetValue<T> {
-  getPort: () => MessagePort | undefined;
-  emit: (senderPort: MessagePort | undefined, message: Message<T>) => void;
+  emit: (message: Message<T>) => void;
   subscribe: (_handlerFn: (event: Message<T>) => void) => void;
   unsubscribe: () => void;
 }
@@ -20,7 +19,9 @@ function emit<T>(senderPort: MessagePort | undefined, message: Message<T>) {
 }
 
 class TargetFrameConnector {
-  private channelRetValue: TargetConnectorRetValue<any> | undefined;
+  private _channelRetValue: TargetConnectorRetValue<any> | undefined;
+  private _port: MessagePort | undefined;
+  private _listener: ((event: MessageEvent) => void) | undefined;
 
   /**
    * Responsible for establishing the connection with the host.
@@ -38,32 +39,36 @@ class TargetFrameConnector {
    *       })
    *
    *     // Emit messages:
-   *     messenger.emit(messenger.getPort(), { type: 'foo', data: "clicked inside iframe!"});
+   *     messenger.emit({ type: 'foo', data: "clicked inside iframe!"});
    *
    *    // Unsubscribe:
    *    messenger.unsubscribe();
    *
    */
-  private static connectToHost<T>(): () => TargetConnectorRetValue<T> {
-    let port2: MessagePort | undefined;
+  private static _connectToHost<T>(connector: TargetFrameConnector): TargetConnectorRetValue<T> {
     let handlerFn: (message: Message<T>) => void | undefined;
 
-    const listenerFn: (event: MessageEvent) => void = (event: MessageEvent) => {
-      port2 = event.ports[0];
-      port2.onmessage = (event: MessageEvent) => handlerFn(event.data);
+    const listenerFn = (event: MessageEvent) => {
+      if (!connector._port) {
+        connector._port = event.ports[0];
+        connector._port.onmessage = (event: MessageEvent) => handlerFn(event.data);
+      }
     };
 
-    window.addEventListener('message', listenerFn);
-
-    return () => {
-      return {
-        getPort: () => port2,
-        emit: (senderPort: MessagePort | undefined, message: Message<T>) =>
-          emit(senderPort, message),
-        subscribe: (_handlerFn: (event: Message<T>) => void) =>
-          (handlerFn = _handlerFn),
-        unsubscribe: () => window.removeEventListener('message', listenerFn),
-      };
+    connector._listener = listenerFn;
+    window.addEventListener('message', connector._listener);
+    return {
+      emit: (message: Message<T>) => emit(connector?._port, message),
+      subscribe: (_handlerFn: (event: Message<T>) => void) => {
+        if (!connector._listener) {
+          connector._listener = listenerFn;
+        }
+        handlerFn = _handlerFn
+      },
+      unsubscribe: () => {
+        connector._listener = undefined;
+        window.removeEventListener('message', <(event: MessageEvent) => void><unknown>connector._listener)
+      },
     };
   }
 
@@ -74,10 +79,10 @@ class TargetFrameConnector {
   static messenger<T>(
     connector: TargetFrameConnector
   ): TargetConnectorRetValue<T> {
-    if (!connector.channelRetValue) {
-      connector.channelRetValue = TargetFrameConnector.connectToHost()();
+    if (!connector._channelRetValue) {
+      connector._channelRetValue = TargetFrameConnector._connectToHost(connector);
     }
-    return connector.channelRetValue;
+    return connector._channelRetValue;
   }
 }
 
@@ -94,6 +99,7 @@ export class CrossDocsMessenger {
    * @param target
    * @param targetOrigin
    */
+
   static connectToChannel(
     target: HTMLIFrameElement | undefined,
     targetOrigin: string
