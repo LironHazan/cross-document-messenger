@@ -7,45 +7,25 @@ export interface ConnectorRetValue<T> {
   subscribe: (_handlerFn: (event: Message<T>) => void) => void;
   unsubscribe: () => void;
 }
-
-interface MessengerTrait {
+interface MessengerConstraint {
   messenger<T>(
     target: HTMLIFrameElement | undefined,
     targetOrigin: string
   ): ConnectorRetValue<T>;
 }
 
-function emit<T>(senderPort: MessagePort | undefined, message: Message<T>) {
-  senderPort?.postMessage(message);
-}
-
-class TargetFrameConnector implements MessengerTrait {
+/**
+ * Target/Hosted document (iframe) API
+ */
+class TargetFrameConnector implements MessengerConstraint {
   private _channelRetValue: ConnectorRetValue<any> | undefined;
   private _port: MessagePort | undefined;
   private _listener: ((event: MessageEvent) => void) | undefined;
 
-  /**
-   * Responsible for establishing the connection with the host.
-   * Returns the following functions:
-   * getPort: (): Returns the initialized port used for listening to messages from the host and post messages
-   * subscribe: (_handlerFn: (event: Message<T>) => void): Used for subscribing to host messages
-   * unsubscribe: (): Should be used by the consumer component unmounting / destruction hook (depends on the framework)
-   *
-   * Example:
-   *      import {TargetFrameMessenger as messenger} from "cross-document-messenger";
-   **
-   *     // Listen to messages from the host
-   *     messenger.subscribe((message: Message<any>) => {
-   *          console.log(message);
-   *       })
-   *
-   *     // Emit messages:
-   *     messenger.emit({ type: 'foo', data: "clicked inside iframe!"});
-   *
-   *    // Unsubscribe:
-   *    messenger.unsubscribe();
-   *
-   */
+  static getInstance(): TargetFrameConnector {
+    return new TargetFrameConnector();
+  }
+
   private _connectToHost<T>(): ConnectorRetValue<T> {
     let handlerFn: (message: Message<T>) => void | undefined;
 
@@ -59,7 +39,7 @@ class TargetFrameConnector implements MessengerTrait {
     this._listener = listenerFn;
     window.addEventListener('message', this._listener);
     return {
-      emit: (message: Message<T>) => emit(this?._port, message),
+      emit: (message: Message<T>) => this?._port?.postMessage(message),
       subscribe: (_handlerFn: (event: Message<T>) => void) => {
         if (!this._listener) {
           this._listener = listenerFn;
@@ -76,10 +56,6 @@ class TargetFrameConnector implements MessengerTrait {
     };
   }
 
-  static getInstance(): TargetFrameConnector {
-    return new TargetFrameConnector();
-  }
-
   messenger<T>(): ConnectorRetValue<T> {
     if (!this._channelRetValue) {
       this._channelRetValue = this._connectToHost();
@@ -87,11 +63,13 @@ class TargetFrameConnector implements MessengerTrait {
     return this._channelRetValue;
   }
 }
-
 const connector = TargetFrameConnector.getInstance();
 export const TargetFrameMessenger = connector.messenger();
 
-export class HostConnector implements MessengerTrait {
+/**
+ * Host document API
+ */
+export class HostConnector implements MessengerConstraint {
   private _hostPort: MessagePort | undefined;
   private _channel: MessageChannel | undefined;
 
@@ -128,9 +106,7 @@ export class HostConnector implements MessengerTrait {
   ): ConnectorRetValue<T> {
     this._establishChannel(target, targetOrigin);
     return {
-      emit: <T>(message: Message<T>) => {
-        emit(this._hostPort, message);
-      },
+      emit: <T>(message: Message<T>) => this._hostPort?.postMessage(message),
       subscribe: <T>(handlerFn: (event: Message<T>) => void) => {
         // port1 listens to port2 which was transferred to the channel
         if (!this._hostPort) return;
@@ -146,22 +122,4 @@ export class HostConnector implements MessengerTrait {
       },
     };
   }
-
-  /**
-   * Should be consumed by the parent/hosting document
-   * Accepts the hosts port which listens to the target messages and an handler to react to the message
-   * Example:
-   * CrossDocsMessenger.listenToTargetPort(hostPort, (data) => subscribeToChildMessages(data));
-   * @param hostPort
-   * @param handlerFn
-   */
-
-  /**
-   * Accepts the intended messaging port (could be either the hosts port or the iframe)
-   * and the message,
-   * Example:
-   * CrossDocsMessenger.emit(hostPort, { type: 'foo', data: { foo: "bar"} });
-   * @param senderPort
-   * @param message
-   */
 }
