@@ -2,7 +2,7 @@
   "name": "cross-document-messenger",
   "version": "1.0.5",
   "description": "post and subscribe messages between documents ",
-  "main": "dist/cross-document-messenger/index.esm.js",
+  "main": "dist/cross-document-messenger/index.js",
   "scripts": {
     "lint": "eslint lib/ --ext .ts",
     "test": "jest",

@@ -3,7 +3,7 @@ require('esbuild')
     entryPoints: ['lib/index.ts'],
     bundle: true,
     sourcemap: true,
-    minify: true,
+    minify: false,
     loader: { '.ts': 'ts' },
     format: 'esm',
     target: ['esnext'],
