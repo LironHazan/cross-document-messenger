@@ -2,7 +2,7 @@ export interface Message<T> {
   type: string;
   data: T;
 }
-export interface ConnectorRetValue<T> {
+export interface CrossDocMessenger<T> {
   emit: (message: Message<T>) => void;
   subscribe: (_handlerFn: (event: Message<T>) => void) => void;
   unsubscribe: () => void;
@@ -11,14 +11,14 @@ interface MessengerConstraint {
   messenger<T>(
     target: HTMLIFrameElement | undefined,
     targetOrigin: string
-  ): ConnectorRetValue<T>;
+  ): CrossDocMessenger<T>;
 }
 
 /**
  * Target/Hosted document (iframe) API
  */
 class TargetFrameConnector implements MessengerConstraint {
-  private _channelRetValue: ConnectorRetValue<any> | undefined;
+  private _crossDocMessenger: CrossDocMessenger<any> | undefined;
   private _port: MessagePort | undefined;
   private _listener: ((event: MessageEvent) => void) | undefined;
 
@@ -26,7 +26,7 @@ class TargetFrameConnector implements MessengerConstraint {
     return new TargetFrameConnector();
   }
 
-  private _connectToHost<T>(): ConnectorRetValue<T> {
+  private _connectToHost<T>(): CrossDocMessenger<T> {
     let handlerFn: (message: Message<T>) => void | undefined;
 
     const listenerFn = (event: MessageEvent) => {
@@ -56,14 +56,17 @@ class TargetFrameConnector implements MessengerConstraint {
     };
   }
 
-  messenger<T>(): ConnectorRetValue<T> {
-    if (!this._channelRetValue) {
-      this._channelRetValue = this._connectToHost();
+  messenger<T>(): CrossDocMessenger<T> {
+    if (!this._crossDocMessenger) {
+      this._crossDocMessenger = this._connectToHost();
     }
-    return this._channelRetValue;
+    return this._crossDocMessenger;
   }
 }
 const connector = TargetFrameConnector.getInstance();
+/**
+ * TargetFrameMessenger is of type: CrossDocMessenger<T>
+ */
 export const TargetFrameMessenger = connector.messenger();
 
 /**
@@ -103,7 +106,7 @@ export class HostConnector implements MessengerConstraint {
   public messenger<T>(
     target: HTMLIFrameElement | undefined,
     targetOrigin: string
-  ): ConnectorRetValue<T> {
+  ): CrossDocMessenger<T> {
     this._establishChannel(target, targetOrigin);
     return {
       emit: <T>(message: Message<T>) => this._hostPort?.postMessage(message),
