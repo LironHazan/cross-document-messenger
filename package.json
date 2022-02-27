@@ -1,6 +1,6 @@
 {
   "name": "cross-document-messenger",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "post and subscribe messages between documents ",
   "main": "dist/cross-document-messenger/index.js",
   "scripts": {
