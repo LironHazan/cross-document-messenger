@@ -1,7 +1,22 @@
 module.exports = {
-    roots: ['<rootDir>/tests'],
-    testMatch: ['**/__tests__/**/*.+(ts|tsx|js)', '**/?(*.)+(spec|test).+(ts|tsx|js)'],
-    transform: {
-        '^.+\\.(ts|tsx)$': 'ts-jest',
+  roots: ['<rootDir>/tests'],
+  testMatch: ['**/?(*.)+(spec|test).+(ts|tsx|js)'],
+  transform: {
+    '^.+\\.(ts|tsx)$': 'ts-jest',
+  },
+  testEnvironment: 'jsdom',
+  globals: {
+    MessageChannel: function () {
+      return {
+        port1: {
+          onmessage: () => {},
+          postMessage: () => {},
+        },
+        port2: {
+          onmessage: () => {},
+          postMessage: () => {},
+        },
+      };
     },
+  },
 };

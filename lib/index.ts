@@ -11,7 +11,7 @@ interface MessengerConstraint {
   messenger<T>(
     target: HTMLIFrameElement | undefined,
     targetOrigin: string
-  ): CrossDocMessenger<T>;
+  ): CrossDocMessenger<T> | undefined;
 }
 
 /**
@@ -64,6 +64,13 @@ class TargetFrameConnector implements MessengerConstraint {
   }
 }
 const connector = TargetFrameConnector.getInstance();
+
+/**
+ * This is an internal variable used for testing - DO NOT USE IT DIRECTLY
+ * IT is not a part of the usable API.
+ */
+export const __target_connector_instance = connector;
+
 /**
  * TargetFrameMessenger is of type: CrossDocMessenger<T>
  */
@@ -106,7 +113,8 @@ export class HostConnector implements MessengerConstraint {
   public messenger<T>(
     target: HTMLIFrameElement | undefined,
     targetOrigin: string
-  ): CrossDocMessenger<T> {
+  ): CrossDocMessenger<T> | undefined {
+    if (!target) return;
     this._establishChannel(target, targetOrigin);
     return {
       emit: <T>(message: Message<T>) => this._hostPort?.postMessage(message),
