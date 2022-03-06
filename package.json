@@ -18,6 +18,10 @@
   "keywords": [
     "web-messaging"
   ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/LironHazan/cross-document-messenger.git"
+  },
   "author": "lironh",
   "license": "MIT",
   "devDependencies": {
